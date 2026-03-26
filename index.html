@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduVerse 3D – Mundos do Conhecimento</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --ocean: #0077b6;
+    --space: #240046;
+    --nature: #2d6a4f;
+    --history: #b5451b;
+    --science: #7b2d8b;
+    --gold: #ffd60a;
+    --white: #fff;
+    --ui-bg: rgba(0,0,0,0.55);
+    --radius: 18px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #000;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+    user-select: none;
+  }
+
+  canvas { display:block; position:fixed; top:0; left:0; z-index:0; }
+
+  /* ── HUD ── */
+  #hud {
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ── SCREEN CARDS ── */
+  .screen {
+    position: absolute; inset:0;
+    display: flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    transition: opacity .5s; pointer-events: auto;
+  }
+  .screen.hidden { opacity:0; pointer-events:none; }
+
+  /* ── MAIN MENU ── */
+  #menu-screen { gap: 28px; }
+
+  .title-block { text-align:center; }
+  .title-block h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    color: #fff;
+    text-shadow: 0 0 30px #ffd60a, 0 4px 8px rgba(0,0,0,.7);
+    letter-spacing: 2px;
+    line-height:1;
+  }
+  .title-block p {
+    color: #ffe;
+    font-size: clamp(1rem,2.5vw,1.4rem);
+    font-weight:600;
+    margin-top:8px;
+    text-shadow:0 2px 6px #000;
+  }
+
+  .worlds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    max-width: 900px;
+    width: 90vw;
+    pointer-events:auto;
+  }
+
+  .world-card {
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(12px);
+    border: 2px solid rgba(255,255,255,.25);
+    border-radius: var(--radius);
+    padding: 22px 14px;
+    text-align:center;
+    cursor:pointer;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .world-card:hover {
+    transform: translateY(-8px) scale(1.04);
+    box-shadow: 0 20px 50px rgba(255,214,10,.35);
+    border-color: var(--gold);
+  }
+  .world-card .icon { font-size: 3rem; }
+  .world-card .wname {
+    font-family:'Fredoka One', cursive;
+    font-size: 1.15rem; color:#fff;
+    text-shadow:0 2px 4px #000;
+  }
+  .world-card .wage {
+    font-size:.8rem; color:#ffe;
+    background:rgba(0,0,0,.35); border-radius:20px;
+    padding:2px 10px;
+  }
+
+  /* ── GAME SCREEN ── */
+  #game-screen {
+    background: transparent;
+    justify-content: flex-end;
+  }
+
+  #top-bar {
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    background: var(--ui-bg);
+    backdrop-filter:blur(10px);
+    border-radius:40px;
+    padding: 10px 28px;
+    display:flex; align-items:center; gap:18px;
+    border:1px solid rgba(255,255,255,.2);
+  }
+  #world-label {
+    font-family:'Fredoka One',cursive; color:#fff;
+    font-size:1.2rem; letter-spacing:1px;
+  }
+  #score-display {
+    background: rgba(255,214,10,.2); border-radius:20px;
+    padding:4px 14px; color:var(--gold);
+    font-weight:800; font-size:1rem;
+  }
+  #btn-home {
+    background:none; border:none; color:#fff; font-size:1.5rem;
+    cursor:pointer; transition:transform .2s;
+  }
+  #btn-home:hover { transform: scale(1.3); }
+
+  /* ── QUIZ PANEL ── */
+  #quiz-panel {
+    position:absolute; bottom: 24px; left:50%; transform:translateX(-50%);
+    background: var(--ui-bg);
+    backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.25);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    width: min(560px, 92vw);
+    pointer-events:auto;
+    transition: opacity .4s, transform .4s;
+  }
+  #quiz-panel.hidden { opacity:0; transform:translateX(-50%) translateY(30px); pointer-events:none; }
+
+  #question-text {
+    color:#fff; font-weight:700;
+    font-size: clamp(1rem,2.5vw,1.25rem);
+    margin-bottom:16px; line-height:1.4;
+  }
+
+  .choices {
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .choice-btn {
+    background: rgba(255,255,255,.12);
+    border: 2px solid rgba(255,255,255,.2);
+    border-radius: 12px;
+    color:#fff; font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:.9rem;
+    padding: 12px 10px; cursor:pointer;
+    transition: background .2s, border-color .2s, transform .15s;
+    text-align:center;
+  }
+  .choice-btn:hover { background:rgba(255,214,10,.25); border-color:var(--gold); transform:scale(1.03); }
+  .choice-btn.correct { background:rgba(56,230,90,.35); border-color:#38e65a; }
+  .choice-btn.wrong   { background:rgba(255,60,60,.35);  border-color:#ff3c3c; }
+
+  #feedback {
+    margin-top:12px; font-size:1rem; font-weight:700;
+    text-align:center; min-height:24px;
+    transition: opacity .3s;
+  }
+  .feedback-ok  { color:#6fff8c; }
+  .feedback-err { color:#ff7070; }
+
+  #btn-next {
+    display:block; margin: 12px auto 0;
+    background: var(--gold); border:none; border-radius:30px;
+    color:#000; font-family:'Fredoka One',cursive;
+    font-size:1.05rem; padding:10px 36px;
+    cursor:pointer; transition: transform .2s, box-shadow .2s;
+    box-shadow:0 4px 16px rgba(255,214,10,.4);
+  }
+  #btn-next:hover { transform:scale(1.06); box-shadow:0 6px 24px rgba(255,214,10,.6); }
+  #btn-next.hidden { display:none; }
+
+  /* ── RESULT SCREEN ── */
+  #result-screen { gap:22px; text-align:center; }
+  #result-screen h2 {
+    font-family:'Fredoka One',cursive; color:#fff;
+    font-size: clamp(2rem,6vw,4rem);
+    text-shadow: 0 0 24px var(--gold);
+  }
+  #result-score {
+    font-size: clamp(1.2rem,4vw,2rem); color:var(--gold); font-weight:800;
+  }
+  #result-msg { color:#dde; font-size:1rem; max-width:400px; }
+
+  .big-btn {
+    background: var(--gold); border:none; border-radius:40px;
+    color:#000; font-family:'Fredoka One',cursive;
+    font-size:1.2rem; padding:14px 44px;
+    cursor:pointer; transition: transform .2s, box-shadow .2s;
+    box-shadow:0 6px 24px rgba(255,214,10,.5);
+  }
+  .big-btn:hover { transform:scale(1.07); }
+
+  /* ── PARTICLES ── */
+  #confetti-canvas {
+    position:fixed; inset:0; z-index:20;
+    pointer-events:none;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    position:fixed;inset:0;background:#000;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column; gap:16px; z-index:100;
+    transition: opacity .6s;
+  }
+  #loading h2 { font-family:'Fredoka One',cursive; color:#fff; font-size:2rem; }
+  .loader-bar { width:220px; height:8px; background:#333; border-radius:8px; overflow:hidden; }
+  .loader-fill { height:100%; background:var(--gold); border-radius:8px;
+    animation: load 1.5s ease forwards; }
+  @keyframes load { from{width:0} to{width:100%} }
+
+  /* ── MOBILE ── */
+  @media(max-width:500px){
+    .worlds-grid { grid-template-columns: repeat(2,1fr); gap:10px; }
+    .choices { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<canvas id="confetti-canvas"></canvas>
+
+<!-- LOADING -->
+<div id="loading">
+  <h2>🌍 EduVerse 3D</h2>
+  <p style="color:#aaa;font-family:Nunito,sans-serif">Carregando mundos…</p>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<div id="hud">
+
+  <!-- MENU -->
+  <div class="screen" id="menu-screen">
+    <div class="title-block">
+      <h1>🌍 EduVerse 3D</h1>
+      <p>Escolha um mundo e aprenda de forma divertida!</p>
+    </div>
+    <div class="worlds-grid" id="worlds-grid"></div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen hidden" id="game-screen">
+    <div id="top-bar">
+      <span id="world-label">🌊 Oceano</span>
+      <span id="score-display">⭐ 0 pts</span>
+      <button id="btn-home" title="Voltar ao menu">🏠</button>
+    </div>
+
+    <div id="quiz-panel">
+      <div id="question-text">Pergunta aqui</div>
+      <div class="choices" id="choices"></div>
+      <div id="feedback"></div>
+      <button id="btn-next" class="hidden">Próxima →</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen hidden" id="result-screen">
+    <div style="font-size:4rem">🏆</div>
+    <h2 id="result-title">Parabéns!</h2>
+    <div id="result-score">Você fez 0 pontos!</div>
+    <div id="result-msg"></div>
+    <button class="big-btn" id="btn-play-again">Jogar Novamente</button>
+    <button class="big-btn" style="background:rgba(255,255,255,.15);color:#fff;margin-top:6px" id="btn-back-menu">🏠 Menu</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ════════════════════════════════════════════
+//  DATA – Worlds & Questions
+// ════════════════════════════════════════════
+const WORLDS = [
+  {
+    id:'ocean', icon:'🌊', name:'Oceano Mágico',
+    age:'5–9 anos', color:0x0096c7, fogColor:'#001d3d',
+    bg:'#001d3d',
+    questions:[
+      { q:'Qual animal é o maior do oceano?', choices:['Tubarão-baleia','Polvo','Golfinho','Estrela-do-mar'], ans:0 },
+      { q:'De que cor é a água do mar?', choices:['Vermelha','Azul','Verde','Amarela'], ans:1 },
+      { q:'O que os peixes usam para respirar?', choices:['Pulmões','Brânquias','Nariz','Boca'], ans:1 },
+      { q:'Qual animal não é um peixe?', choices:['Sardinha','Baleia','Atum','Tilápia'], ans:1 },
+      { q:'Quantos braços tem um polvo comum?', choices:['4','6','8','10'], ans:2 },
+      { q:'Onde vivem os corais?', choices:['Rios','Florestas','Mar','Desertos'], ans:2 },
+      { q:'O que é a maré?', choices:['Vento','Nuvem','Subida e descida do mar','Tempestade'], ans:2 },
+      { q:'Qual sentido os golfinhos usam para se comunicar?', choices:['Visão','Som/Ecolocalização','Olfato','Tato'], ans:1 },
+    ]
+  },
+  {
+    id:'space', icon:'🚀', name:'Espaço Sideral',
+    age:'8–13 anos', color:0x7b2fff, fogColor:'#0a001a',
+    bg:'#0a001a',
+    questions:[
+      { q:'Qual planeta é o maior do Sistema Solar?', choices:['Terra','Saturno','Júpiter','Netuno'], ans:2 },
+      { q:'Quantos planetas tem o Sistema Solar?', choices:['7','8','9','10'], ans:1 },
+      { q:'O que é uma estrela cadente?', choices:['Estrela morta','Meteoro na atmosfera','Cometa','Satélite'], ans:1 },
+      { q:'Quanto tempo a luz leva para chegar ao Sol até a Terra?', choices:['1 segundo','8 minutos','1 hora','1 dia'], ans:1 },
+      { q:'Qual é o planeta mais quente do Sistema Solar?', choices:['Mercúrio','Vênus','Terra','Marte'], ans:1 },
+      { q:'O que é a Via Láctea?', choices:['Um planeta','Uma estrela','Nossa galáxia','Uma nebulosa'], ans:2 },
+      { q:'Qual planet tem anéis famosos?', choices:['Júpiter','Urano','Saturno','Netuno'], ans:2 },
+      { q:'O que os astronautas vestem no espaço?', choices:['Roupas comuns','Traje espacial','Uniforme escolar','Mergulho'], ans:1 },
+    ]
+  },
+  {
+    id:'nature', icon:'🌿', name:'Floresta Viva',
+    age:'6–10 anos', color:0x40916c, fogColor:'#1a3324',
+    bg:'#1a3324',
+    questions:[
+      { q:'Qual processo as plantas usam para fazer comida com luz solar?', choices:['Respiração','Fotossíntese','Digestão','Evaporação'], ans:1 },
+      { q:'Qual animal é o maior terrestre?', choices:['Leão','Elefante-africano','Hipopótamo','Girafa'], ans:1 },
+      { q:'De que as árvores absorvem para crescer?', choices:['Açúcar','CO₂ e água','Sal','Óleo'], ans:1 },
+      { q:'O que é biodiversidade?', choices:['Muitas máquinas','Variedade de seres vivos','Tipo de solo','Clima frio'], ans:1 },
+      { q:'Qual o papel das abelhas na natureza?', choices:['Produzir mel apenas','Polinizar flores','Atacar animais','Comer folhas'], ans:1 },
+      { q:'O que é uma cadeia alimentar?', choices:['Tipo de colar','Sequência de quem come quem','Linha de montagem','Rede de pesca'], ans:1 },
+      { q:'Qual animal é herbívoro?', choices:['Leão','Lobo','Vaca','Tubarão'], ans:2 },
+      { q:'Qual camada protege a Terra de raios UV?', choices:['Troposfera','Crosta','Camada de Ozônio','Manto'], ans:2 },
+    ]
+  },
+  {
+    id:'history', icon:'🏛️', name:'Viagem no Tempo',
+    age:'10–14 anos', color:0xb5451b, fogColor:'#1a0a00',
+    bg:'#1a0a00',
+    questions:[
+      { q:'Qual civilização construiu as pirâmides do Egito?', choices:['Romanos','Gregos','Egípcios','Persas'], ans:2 },
+      { q:'Em que ano o Brasil foi descoberto pelos portugueses?', choices:['1400','1492','1500','1550'], ans:2 },
+      { q:'Quem foi a primeira mulher a ganhar o Nobel duas vezes?', choices:['Florence Nightingale','Marie Curie','Ada Lovelace','Simone de Beauvoir'], ans:1 },
+      { q:'Qual invenção de Gutenberg revolucionou a comunicação?', choices:['Telégrafo','Prensa tipográfica','Rádio','Papel'], ans:1 },
+      { q:'Onde surgiu a democracia?', choices:['Roma','Atenas / Grécia','Egito','China'], ans:1 },
+      { q:'Qual foi a duração da Segunda Guerra Mundial?', choices:['4 anos','6 anos','8 anos','10 anos'], ans:1 },
+      { q:'Quem foi o primeiro presidente do Brasil?', choices:['D. Pedro I','Getúlio Vargas','Deodoro da Fonseca','Rui Barbosa'], ans:2 },
+      { q:'Qual civilização inventou o número zero?', choices:['Egípcios','Romanos','Indianos/Árabes','Gregos'], ans:2 },
+    ]
+  },
+  {
+    id:'science', icon:'🔬', name:'Lab Científico',
+    age:'11–16 anos', color:0x9b2dca, fogColor:'#12001a',
+    bg:'#12001a',
+    questions:[
+      { q:'Qual é a fórmula da água?', choices:['CO₂','H₂O','O₂','NaCl'], ans:1 },
+      { q:'Qual partícula tem carga negativa?', choices:['Próton','Nêutron','Elétron','Núcleo'], ans:2 },
+      { q:'Qual lei descreve: F = m × a?', choices:['Lei de Ohm','2ª Lei de Newton','Lei de Faraday','Lei de Hooke'], ans:1 },
+      { q:'O DNA fica em qual parte da célula?', choices:['Mitocôndria','Citoplasma','Núcleo','Membrana'], ans:2 },
+      { q:'Qual é o número atômico do carbono?', choices:['6','8','12','14'], ans:0 },
+      { q:'O que mede um termômetro?', choices:['Pressão','Temperatura','Velocidade','Volume'], ans:1 },
+      { q:'Qual gás compõe ~78% da atmosfera?', choices:['Oxigênio','CO₂','Nitrogênio','Hidrogênio'], ans:2 },
+      { q:'O que é a teoria da evolução de Darwin?', choices:['Criação repentina','Seleção natural ao longo do tempo','Geração espontânea','Mutação direta'], ans:1 },
+    ]
+  },
+];
+
+// ════════════════════════════════════════════
+//  THREE.JS ENGINE
+// ════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, .1, 1000);
+camera.position.set(0,4,14);
+
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// Lighting
+const ambLight = new THREE.AmbientLight(0xffffff, .7);
+scene.add(ambLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(10,20,10);
+dirLight.castShadow = true;
+scene.add(dirLight);
+const pointLight = new THREE.PointLight(0xffd60a, 1.5, 40);
+pointLight.position.set(0,8,0);
+scene.add(pointLight);
+
+// State
+let worldObjects = [];
+let animMixers = [];
+let clock = new THREE.Clock();
+let particleSystem = null;
+
+function clearWorld(){
+  worldObjects.forEach(o=>scene.remove(o));
+  worldObjects=[];
+  if(particleSystem){ scene.remove(particleSystem); particleSystem=null; }
+}
+
+function buildOceanWorld(){
+  scene.background = new THREE.Color(0x001d3d);
+  scene.fog = new THREE.FogExp2(0x001d3d, 0.025);
+  pointLight.color.set(0x00ccff);
+
+  // Ocean floor
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(60,60),
+    new THREE.MeshStandardMaterial({color:0x023e8a, roughness:.9})
+  );
+  floor.rotation.x = -Math.PI/2; floor.position.y=-2;
+  floor.receiveShadow=true; scene.add(floor); worldObjects.push(floor);
+
+  // Water surface (animated via shader-like approach)
+  const waterGeo = new THREE.PlaneGeometry(60,60,32,32);
+  const waterMat = new THREE.MeshStandardMaterial({
+    color:0x0077b6, transparent:true, opacity:.55,
+    roughness:.05, metalness:.3
+  });
+  const water = new THREE.Mesh(waterGeo, waterMat);
+  water.rotation.x=-Math.PI/2; water.position.y=5; water.name='water';
+  scene.add(water); worldObjects.push(water);
+
+  // Fish (simple shapes)
+  const fishColors=[0xff6b35,0xf7c59f,0xffbe0b,0xfb5607,0x8ecae6];
+  for(let i=0;i<18;i++){
+    const fc=fishColors[Math.floor(Math.random()*fishColors.length)];
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.4,.8,.6),new THREE.MeshStandardMaterial({color:fc}));
+    const tail=new THREE.Mesh(new THREE.ConeGeometry(.25,.5,4),new THREE.MeshStandardMaterial({color:fc}));
+    tail.rotation.z=Math.PI/2; tail.position.x=-.55;
+    const fish=new THREE.Group();
+    fish.add(body); fish.add(tail);
+    fish.position.set((Math.random()-.5)*20,(Math.random()*4-.5),(Math.random()-.5)*20);
+    fish.userData = { speed:Math.random()*.02+.008, angle:Math.random()*Math.PI*2, radius:3+Math.random()*5 };
+    scene.add(fish); worldObjects.push(fish);
+  }
+
+  // Corals
+  for(let i=0;i<12;i++){
+    const cc=[0xff6b6b,0xf7b731,0xee5a24,0x78e08f];
+    const geo=new THREE.CylinderGeometry(.1,.3,Math.random()*1.5+.5,6);
+    const mat=new THREE.MeshStandardMaterial({color:cc[Math.floor(Math.random()*cc.length)]});
+    const coral=new THREE.Mesh(geo,mat);
+    coral.position.set((Math.random()-.5)*18,-2+geo.parameters.height/2,(Math.random()-.5)*18);
+    coral.castShadow=true;
+    scene.add(coral); worldObjects.push(coral);
+  }
+
+  // Bubbles (particles)
+  makeBubbles(0x00b4d8, 200);
+
+  camera.position.set(0,3,14);
+}
+
+function buildSpaceWorld(){
+  scene.background = new THREE.Color(0x0a001a);
+  scene.fog = new THREE.FogExp2(0x0a001a, 0.012);
+  pointLight.color.set(0xaa44ff);
+
+  // Stars
+  const starGeo=new THREE.BufferGeometry();
+  const starVerts=[];
+  for(let i=0;i<3000;i++){
+    starVerts.push((Math.random()-.5)*200,(Math.random()-.5)*200,(Math.random()-.5)*200);
+  }
+  starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starVerts,3));
+  const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:.3}));
+  scene.add(stars); worldObjects.push(stars);
+
+  // Sun
+  const sun=new THREE.Mesh(new THREE.SphereGeometry(2,32,32),new THREE.MeshStandardMaterial({color:0xffd60a,emissive:0xffa500,emissiveIntensity:1}));
+  sun.position.set(-12,4,-10);
+  scene.add(sun); worldObjects.push(sun);
+
+  // Planets
+  const planets=[
+    {r:1.2,c:0x4cc9f0,dx:6,dy:1,dz:0},
+    {r:.7,c:0xf72585,dx:10,dy:2,dz:2},
+    {r:.5,c:0x7209b7,dx:14,dy:0,dz:4},
+    {r:.9,c:0xff9f1c,dx:-8,dy:3,dz:-3},
+  ];
+  planets.forEach(p=>{
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(p.r,32,32),new THREE.MeshStandardMaterial({color:p.c,roughness:.7}));
+    mesh.position.set(p.dx,p.dy,p.dz);
+    mesh.userData.orbitSpeed=.3+Math.random()*.3;
+    mesh.userData.orbitCenter=new THREE.Vector3(0,p.dy,0);
+    mesh.userData.orbitRadius=Math.sqrt(p.dx*p.dx+p.dz*p.dz);
+    mesh.userData.orbitAngle=Math.atan2(p.dz,p.dx);
+    scene.add(mesh); worldObjects.push(mesh);
+  });
+
+  // Rings around orange planet
+  const ringGeo=new THREE.RingGeometry(1.3,1.8,40);
+  const ringMat=new THREE.MeshBasicMaterial({color:0xff9f1c,side:THREE.DoubleSide,transparent:true,opacity:.6});
+  const ring=new THREE.Mesh(ringGeo,ringMat);
+  ring.rotation.x=Math.PI/3;
+  ring.userData.ringOf = worldObjects[worldObjects.length-1];
+  scene.add(ring); worldObjects.push(ring);
+
+  // Rocket
+  const rocketGroup=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.3,.4,2,8),new THREE.MeshStandardMaterial({color:0xdddddd}));
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(.3,.8,8),new THREE.MeshStandardMaterial({color:0xff6b6b}));
+  nose.position.y=1.4;
+  const flame=new THREE.Mesh(new THREE.ConeGeometry(.25,.7,8),new THREE.MeshStandardMaterial({color:0xff9500,emissive:0xff5500,emissiveIntensity:1}));
+  flame.position.y=-1.3; flame.rotation.z=Math.PI;
+  rocketGroup.add(body,nose,flame);
+  rocketGroup.position.set(0,1,0);
+  rocketGroup.userData.isRocket=true;
+  scene.add(rocketGroup); worldObjects.push(rocketGroup);
+
+  makeBubbles(0x7b2fff,150);
+  camera.position.set(0,5,18);
+}
+
+function buildNatureWorld(){
+  scene.background = new THREE.Color(0x1a3324);
+  scene.fog = new THREE.FogExp2(0x1a3324, 0.022);
+  pointLight.color.set(0x78ff6a);
+
+  // Ground
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0x2d6a4f,roughness:.9}));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true;
+  scene.add(ground); worldObjects.push(ground);
+
+  // Trees
+  function makeTree(x,z,h){
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.2,.3,h,.8),new THREE.MeshStandardMaterial({color:0x6d4c22}));
+    trunk.position.set(x,h/2,z); trunk.castShadow=true;
+    const leaves=new THREE.Mesh(new THREE.SphereGeometry(h*.6,8,8),new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(.35-.05*Math.random(),.7,.35)}));
+    leaves.position.set(x,h+h*.3,z); leaves.castShadow=true;
+    scene.add(trunk,leaves);
+    worldObjects.push(trunk,leaves);
+  }
+  for(let i=0;i<22;i++) makeTree((Math.random()-.5)*25,(-Math.random()*15-3),1.5+Math.random()*2);
+
+  // Flowers
+  const flowerColors=[0xf94144,0xf3722c,0xf9c74f,0x90be6d,0x577590];
+  for(let i=0;i<30;i++){
+    const fc=flowerColors[Math.floor(Math.random()*flowerColors.length)];
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.5,4),new THREE.MeshStandardMaterial({color:0x52b788}));
+    stem.position.set((Math.random()-.5)*20,.25,(Math.random()-.5)*10);
+    const bloom=new THREE.Mesh(new THREE.SphereGeometry(.18,6,6),new THREE.MeshStandardMaterial({color:fc}));
+    bloom.position.copy(stem.position); bloom.position.y=.55;
+    scene.add(stem,bloom); worldObjects.push(stem,bloom);
+  }
+
+  // Animals (simplified)
+  function makeBee(x,y,z){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),new THREE.MeshStandardMaterial({color:0xffd60a}));
+    const stripe=new THREE.Mesh(new THREE.TorusGeometry(.2,.05,4,8),new THREE.MeshStandardMaterial({color:0x333}));
+    g.add(body,stripe);
+    g.position.set(x,y,z);
+    g.userData.bee=true; g.userData.t=Math.random()*Math.PI*2;
+    scene.add(g); worldObjects.push(g);
+  }
+  for(let i=0;i<8;i++) makeBee((Math.random()-.5)*12,1.5+Math.random()*2,(Math.random()-.5)*8);
+
+  makeBubbles(0x52b788,100);
+  camera.position.set(0,4,14);
+}
+
+function buildHistoryWorld(){
+  scene.background = new THREE.Color(0x1a0a00);
+  scene.fog = new THREE.FogExp2(0x1a0a00, 0.018);
+  pointLight.color.set(0xffaa44);
+
+  // Sand ground
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0xd4a017,roughness:1}));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true;
+  scene.add(ground); worldObjects.push(ground);
+
+  // Pyramid
+  function makePyramid(x,z,size){
+    const geo=new THREE.ConeGeometry(size,size*1.2,4);
+    const mat=new THREE.MeshStandardMaterial({color:0xc8a84b,roughness:.8});
+    const p=new THREE.Mesh(geo,mat);
+    p.position.set(x,size*.6,z); p.rotation.y=Math.PI/4;
+    p.castShadow=true;
+    scene.add(p); worldObjects.push(p);
+  }
+  makePyramid(0,0,3); makePyramid(-5,3,2); makePyramid(5,3,1.5);
+
+  // Columns
+  for(let i=0;i<8;i++){
+    const col=new THREE.Mesh(new THREE.CylinderGeometry(.3,.4,4,8),new THREE.MeshStandardMaterial({color:0xe8d5b0}));
+    col.position.set(-10+(i%4)*3, 2, i<4?-8:-11);
+    col.castShadow=true;
+    scene.add(col); worldObjects.push(col);
+  }
+
+  // Torch fire particles
+  makeBubbles(0xff6b35, 80);
+  camera.position.set(0,5,16);
+}
+
+function buildScienceWorld(){
+  scene.background = new THREE.Color(0x12001a);
+  scene.fog = new THREE.FogExp2(0x12001a, 0.018);
+  pointLight.color.set(0xcc44ff);
+
+  // Grid floor
+  const grid=new THREE.GridHelper(40,20,0x7b2fff,0x3a0060);
+  grid.position.y=-.5;
+  scene.add(grid); worldObjects.push(grid);
+
+  // DNA double helix
+  for(let i=0;i<40;i++){
+    const t=i*.35;
+    const r=1.2;
+    const x1=Math.cos(t)*r; const z1=Math.sin(t)*r;
+    const x2=Math.cos(t+Math.PI)*r; const z2=Math.sin(t+Math.PI)*r;
+    const y=i*.25-5;
+    const mat1=new THREE.MeshStandardMaterial({color:0x00b4d8,emissive:0x006ea8,emissiveIntensity:.5});
+    const mat2=new THREE.MeshStandardMaterial({color:0xff6b6b,emissive:0xcc0000,emissiveIntensity:.5});
+    const s1=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),mat1);
+    const s2=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),mat2);
+    s1.position.set(x1,y,z1+2); s2.position.set(x2,y,z2+2);
+    if(i%3===0){
+      const barGeo=new THREE.CylinderGeometry(.06,.06,r*2,4);
+      const bar=new THREE.Mesh(barGeo,new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.4}));
+      bar.position.set((x1+x2)/2,y,(z1+z2)/2+2);
+      bar.lookAt(s2.position);
+      scene.add(bar); worldObjects.push(bar);
+    }
+    scene.add(s1,s2); worldObjects.push(s1,s2);
+  }
+
+  // Floating atoms
+  for(let i=0;i<6;i++){
+    const g=new THREE.Group();
+    const nucleus=new THREE.Mesh(new THREE.SphereGeometry(.4,16,16),new THREE.MeshStandardMaterial({color:0xffd60a,emissive:0xffaa00,emissiveIntensity:.8}));
+    g.add(nucleus);
+    for(let j=0;j<3;j++){
+      const orbit=new THREE.Mesh(new THREE.TorusGeometry(.8,.04,8,40),new THREE.MeshStandardMaterial({color:0x00b4d8,transparent:true,opacity:.5}));
+      orbit.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,0);
+      g.add(orbit);
+      const electron=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),new THREE.MeshStandardMaterial({color:0x00b4d8,emissive:0x006ea8,emissiveIntensity:1}));
+      electron.userData.orbitGroup=orbit; electron.userData.orbitAngle=Math.random()*Math.PI*2;
+      g.add(electron);
+    }
+    g.position.set((Math.random()-.5)*14,(Math.random()*3+1),(Math.random()-.5)*6-2);
+    g.userData.floatAtom=true; g.userData.t=Math.random()*Math.PI*2;
+    scene.add(g); worldObjects.push(g);
+  }
+
+  makeBubbles(0x9b2dca, 150);
+  camera.position.set(0,4,16);
+}
+
+function makeBubbles(color, count){
+  const geo=new THREE.BufferGeometry();
+  const pos=[],vel=[];
+  for(let i=0;i<count;i++){
+    pos.push((Math.random()-.5)*20,(Math.random()-.5)*10,(Math.random()-.5)*20);
+    vel.push((Math.random()-.5)*.02,Math.random()*.04+.01,(Math.random()-.5)*.02);
+  }
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.userData.vel=vel;
+  const mat=new THREE.PointsMaterial({color,size:.15,transparent:true,opacity:.7});
+  particleSystem=new THREE.Points(geo,mat);
+  scene.add(particleSystem);
+}
+
+const worldBuilders = {ocean:buildOceanWorld, space:buildSpaceWorld, nature:buildNatureWorld, history:buildHistoryWorld, science:buildScienceWorld};
+
+// ════════════════════════════════════════════
+//  ANIMATION LOOP
+// ════════════════════════════════════════════
+let cameraAngle=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  const dt=clock.getDelta();
+
+  cameraAngle+=.002;
+  camera.position.x=Math.sin(cameraAngle)*0.8;
+  camera.lookAt(0,1,0);
+
+  // World-specific animations
+  worldObjects.forEach(obj=>{
+    if(obj.userData.speed){
+      obj.userData.angle+=obj.userData.speed;
+      const r=obj.userData.radius;
+      obj.position.x=Math.cos(obj.userData.angle)*r;
+      obj.position.z=Math.sin(obj.userData.angle)*r;
+      obj.rotation.y+=.03;
+    }
+    if(obj.userData.isRocket){
+      obj.position.y=Math.sin(t*.8)*1.2+2;
+      obj.rotation.z=Math.sin(t*.5)*.15;
+    }
+    if(obj.userData.orbitSpeed){
+      obj.userData.orbitAngle+=obj.userData.orbitSpeed*dt;
+      const r=obj.userData.orbitRadius;
+      obj.position.x=Math.cos(obj.userData.orbitAngle)*r;
+      obj.position.z=Math.sin(obj.userData.orbitAngle)*r;
+      obj.rotation.y+=.005;
+    }
+    if(obj.userData.bee){
+      obj.userData.t+=.03;
+      obj.position.y=obj.position.y+Math.sin(obj.userData.t)*.01;
+      obj.position.x+=Math.cos(obj.userData.t*.3)*.01;
+    }
+    if(obj.userData.floatAtom){
+      obj.userData.t+=.02;
+      obj.position.y+=Math.sin(obj.userData.t)*.01;
+      obj.rotation.y+=.01;
+    }
+    if(obj.name==='water'){
+      const posAttr=obj.geometry.attributes.position;
+      for(let i=0;i<posAttr.count;i++){
+        const x=posAttr.getX(i); const z=posAttr.getZ(i);
+        posAttr.setY(i, Math.sin(x*.5+t)*.15+Math.cos(z*.5+t)*.1);
+      }
+      posAttr.needsUpdate=true;
+    }
+  });
+
+  // Particles
+  if(particleSystem){
+    const pos=particleSystem.geometry.attributes.position;
+    const vel=particleSystem.geometry.userData.vel;
+    for(let i=0;i<pos.count;i++){
+      let y=pos.getY(i)+vel[i*3+1];
+      if(y>8) y=-4;
+      pos.setY(i,y);
+      pos.setX(i, pos.getX(i)+vel[i*3]);
+      pos.setZ(i, pos.getZ(i)+vel[i*3+2]);
+    }
+    pos.needsUpdate=true;
+  }
+
+  pointLight.intensity=1.2+Math.sin(t*2)*.3;
+
+  renderer.render(scene,camera);
+}
+animate();
+
+// ════════════════════════════════════════════
+//  GAME LOGIC
+// ════════════════════════════════════════════
+let currentWorld=null, questions=[], qIndex=0, score=0, answered=false;
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function enterWorld(world){
+  currentWorld=world;
+  clearWorld();
+  worldBuilders[world.id]();
+  questions = shuffle([...world.questions]);
+  qIndex=0; score=0; answered=false;
+  document.getElementById('world-label').textContent=`${world.icon} ${world.name}`;
+  updateScore();
+  showScreen('game-screen');
+  loadQuestion();
+}
+
+function shuffle(arr){ return arr.sort(()=>Math.random()-.5); }
+
+function updateScore(){ document.getElementById('score-display').textContent=`⭐ ${score} pts`; }
+
+function loadQuestion(){
+  if(qIndex>=questions.length){ showResult(); return; }
+  const q=questions[qIndex];
+  answered=false;
+  document.getElementById('question-text').textContent=`❓ ${q.q}`;
+  document.getElementById('feedback').textContent='';
+  document.getElementById('feedback').className='';
+  document.getElementById('btn-next').classList.add('hidden');
+  document.getElementById('quiz-panel').classList.remove('hidden');
+
+  const choicesEl=document.getElementById('choices');
+  choicesEl.innerHTML='';
+  q.choices.forEach((c,i)=>{
+    const btn=document.createElement('button');
+    btn.className='choice-btn'; btn.textContent=c;
+    btn.addEventListener('click',()=>answer(i,btn));
+    choicesEl.appendChild(btn);
+  });
+}
+
+function answer(idx, btn){
+  if(answered) return;
+  answered=true;
+  const q=questions[qIndex];
+  const all=document.querySelectorAll('.choice-btn');
+  all.forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q.ans) b.classList.add('correct');
+  });
+  const fb=document.getElementById('feedback');
+  if(idx===q.ans){
+    score+=10; updateScore();
+    btn.classList.add('correct');
+    fb.textContent='🎉 Correto! Muito bem!'; fb.className='feedback-ok';
+    launchConfetti();
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent='❌ Ops! A resposta correta estava em verde.'; fb.className='feedback-err';
+  }
+  document.getElementById('btn-next').classList.remove('hidden');
+}
+
+document.getElementById('btn-next').addEventListener('click',()=>{
+  qIndex++;
+  if(qIndex<questions.length) loadQuestion(); else showResult();
+});
+
+document.getElementById('btn-home').addEventListener('click',()=>{
+  clearWorld(); showScreen('menu-screen');
+});
+
+function showResult(){
+  document.getElementById('quiz-panel').classList.add('hidden');
+  const max=questions.length*10;
+  const pct=Math.round(score/max*100);
+  let emoji='😊', msg='Continue praticando!';
+  if(pct>=80){ emoji='🏆'; msg='Desempenho incrível! Você é um gênio!'; }
+  else if(pct>=60){ emoji='⭐'; msg='Muito bom! Quase perfeito!'; }
+  else if(pct>=40){ emoji='👍'; msg='Bom começo! Revise o conteúdo e tente de novo.'; }
+  document.getElementById('result-title').textContent=`${emoji} ${pct>=80?'Parabéns!':'Que tal tentar de novo?'}`;
+  document.getElementById('result-score').textContent=`Você fez ${score} de ${max} pontos (${pct}%)`;
+  document.getElementById('result-msg').textContent=msg;
+  if(pct>=80) launchConfetti(true);
+  showScreen('result-screen');
+}
+
+document.getElementById('btn-play-again').addEventListener('click',()=>{ if(currentWorld) enterWorld(currentWorld); });
+document.getElementById('btn-back-menu').addEventListener('click',()=>{ clearWorld(); showScreen('menu-screen'); });
+
+// ════════════════════════════════════════════
+//  WORLD CARDS
+// ════════════════════════════════════════════
+const grid=document.getElementById('worlds-grid');
+WORLDS.forEach(w=>{
+  const card=document.createElement('div');
+  card.className='world-card';
+  card.innerHTML=`<div class="icon">${w.icon}</div><div class="wname">${w.name}</div><div class="wage">${w.age}</div>`;
+  card.addEventListener('click',()=>enterWorld(w));
+  grid.appendChild(card);
+});
+
+// ════════════════════════════════════════════
+//  CONFETTI
+// ════════════════════════════════════════════
+const confCanvas=document.getElementById('confetti-canvas');
+confCanvas.width=window.innerWidth; confCanvas.height=window.innerHeight;
+window.addEventListener('resize',()=>{ confCanvas.width=window.innerWidth; confCanvas.height=window.innerHeight; });
+const confCtx=confCanvas.getContext('2d');
+let confParticles=[];
+function launchConfetti(big=false){
+  const count=big?180:60;
+  const colors=['#ffd60a','#ff6b6b','#6bffb8','#6bb5ff','#ff6bff','#ffaa00'];
+  for(let i=0;i<count;i++){
+    confParticles.push({
+      x:Math.random()*confCanvas.width,
+      y:-10,
+      vx:(Math.random()-.5)*4,
+      vy:Math.random()*5+3,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      r:Math.random()*5+3,
+      rot:Math.random()*Math.PI*2,
+      vr:(Math.random()-.5)*.2
+    });
+  }
+}
+function animateConf(){
+  requestAnimationFrame(animateConf);
+  confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);
+  confParticles=confParticles.filter(p=>p.y<confCanvas.height+20);
+  confParticles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.vy+=.07;
+    confCtx.save();
+    confCtx.translate(p.x,p.y);
+    confCtx.rotate(p.rot);
+    confCtx.fillStyle=p.color;
+    confCtx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
+    confCtx.restore();
+  });
+}
+animateConf();
+
+// ════════════════════════════════════════════
+//  HIDE LOADING
+// ════════════════════════════════════════════
+setTimeout(()=>{
+  const l=document.getElementById('loading');
+  l.style.opacity='0';
+  setTimeout(()=>l.remove(),600);
+},1600);
+</script>
+</body>
+</html>
