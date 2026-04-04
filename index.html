@@ -231,10 +231,61 @@
   @keyframes load { from{width:0} to{width:100%} }
 
   /* ── MOBILE ── */
+  /* --- AJUSTES DE RESPONSIVIDADE (MOBILE E TABLET) --- */
+@media (max-width: 1024px) {
+  /* Ajusta o título para não quebrar em telas estreitas */
+  .title-block h1 {
+    font-size: clamp(2rem, 10vw, 4rem);
+    padding: 0 10px;
+  }
+
+  /* Garante que o grid de mundos caiba em qualquer largura */
+  .worlds-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    width: 95vw;
+    max-height: 60vh; /* Permite scroll se houver muitos mundos */
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  /* Ajusta o painel de perguntas para o polegar do aluno */
+  #quiz-panel {
+    width: 94vw;
+    bottom: 20px;
+    padding: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Botões maiores para facilitar o toque */
+  .choice-btn {
+    padding: 14px 8px;
+    font-size: 0.95rem;
+  }
+
+  /* Barra superior compacta */
+  #top-bar {
+    width: 90vw;
+    justify-content: space-between;
+    padding: 8px 20px;
+  }
+}
+
+/* Ajuste específico para celulares muito pequenos ou em pé */
+@media (max-width: 480px) {
+  .worlds-grid {
+    grid-template-columns: 1fr 1fr; /* Força 2 colunas */
+  }
+  .choices {
+    grid-template-columns: 1fr; /* Opções do quiz uma embaixo da outra */
+  }
+}
+  /*
   @media(max-width:500px){
     .worlds-grid { grid-template-columns: repeat(2,1fr); gap:10px; }
     .choices { grid-template-columns:1fr; }
-  }
+  }*/
 
   /* --- RESTRIÇÃO PARA DESKTOP --- */
 @media (min-width: 1025px) {
@@ -459,6 +510,7 @@ window.addEventListener('resize', () => {
   const h = window.innerHeight;
   
   renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Melhora nitidez em tablets
   camera.aspect = w / h;
   
   // Ajuste de FOV para telas verticais (celular)
@@ -470,6 +522,8 @@ window.addEventListener('resize', () => {
   
   camera.updateProjectionMatrix();
 });
+// Força o ajuste correto no primeiro carregamento
+window.dispatchEvent(new Event('resize'));
 // Lighting
 const ambLight = new THREE.AmbientLight(0xffffff, .7);
 scene.add(ambLight);
