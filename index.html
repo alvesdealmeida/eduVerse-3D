@@ -404,6 +404,39 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+  // Configuração de Áudio (Sintetizador para evitar carregar arquivos externos)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function tocarSom(tipo) {
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  const agora = audioCtx.currentTime;
+
+  if (tipo === 'acerto') {
+    // Som "Para Cima" (Escala ascendente rápida)
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, agora); // Nota Lá
+    oscillator.frequency.exponentialRampToValueAtTime(880, agora + 0.1); // Sobe para oitava acima
+    gainNode.gain.setValueAtTime(0.1, agora);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, agora + 0.2);
+    oscillator.start(agora);
+    oscillator.stop(agora + 0.2);
+  } else {
+    // Som "Para Baixo" (Frequência caindo - efeito de erro)
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(220, agora); // Nota mais grave
+    oscillator.frequency.exponentialRampToValueAtTime(110, agora + 0.3); // Cai a frequência
+    gainNode.gain.setValueAtTime(0.1, agora);
+    gainNode.gain.linearRampToValueAtTime(0, agora + 0.3);
+    oscillator.start(agora);
+    oscillator.stop(agora + 0.3);
+  }
+}
+
 // ════════════════════════════════════════════
 //  DATA – Worlds & Questions
 // ════════════════════════════════════════════
@@ -947,10 +980,12 @@ function answer(idx, btn){
     score+=10; updateScore();
     btn.classList.add('correct');
     fb.textContent='🎉 Correto! Muito bem!'; fb.className='feedback-ok';
+    tocarSom('acerto'); // <--- ADICIONE ESTA LINHA AQUI
     launchConfetti();
   } else {
     btn.classList.add('wrong');
     fb.textContent='❌ Ops! A resposta correta estava em verde.'; fb.className='feedback-err';
+    tocarSom('erro');   // <--- ADICIONE ESTA LINHA AQUI
   }
   document.getElementById('btn-next').classList.remove('hidden');
 }
